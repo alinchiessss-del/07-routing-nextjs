@@ -1,8 +1,14 @@
-import { Suspense } from 'react';
 import type { Metadata } from 'next';
-import NoteDetailsClient from './NoteDetails.client';
+import {
+  dehydrate,
+  HydrationBoundary,
+  QueryClient,
+} from '@tanstack/react-query';
 
-interface NoteDetailsPageProps {
+import { fetchNoteById } from '@/lib/api';
+import NotePreviewClient from './NotePreview.client';
+
+interface NotePreviewPageProps {
   params: Promise<{
     id: string;
   }>;
@@ -10,22 +16,30 @@ interface NoteDetailsPageProps {
 
 export async function generateMetadata({
   params,
-}: NoteDetailsPageProps): Promise<Metadata> {
+}: NotePreviewPageProps): Promise<Metadata> {
   const { id } = await params;
 
   return {
     title: `Note ${id}`,
+    description: 'Note preview',
   };
 }
 
-export default async function NoteDetailsPage({
+export default async function NotePreviewPage({
   params,
-}: NoteDetailsPageProps) {
+}: NotePreviewPageProps) {
   const { id } = await params;
 
+  const queryClient = new QueryClient();
+
+  await queryClient.prefetchQuery({
+    queryKey: ['note', id],
+    queryFn: () => fetchNoteById(id),
+  });
+
   return (
-    <Suspense fallback={<p>Loading note...</p>}>
-      <NoteDetailsClient id={id} />
-    </Suspense>
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <NotePreviewClient id={id} />
+    </HydrationBoundary>
   );
 }
